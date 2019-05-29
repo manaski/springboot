@@ -820,7 +820,7 @@ java -jar spring-boot-02-config-02-0.0.1-SNAPSHOT.jar --server.port=8087  --serv
 
     ```
 
-    ​
+    
 
 **==将 类路径下  META-INF/spring.factories 里面配置的所有EnableAutoConfiguration的值加入到了容器中；==**
 
@@ -1496,9 +1496,9 @@ public class ResourceProperties implements ResourceLoaderAware {
 
 
 
-==1）、所有 /webjars/** ，都去 classpath:/META-INF/resources/webjars/ 找资源；==
+==1）、所有 /webjars/**请求 ，都去 classpath:/META-INF/resources/webjars/ 找资源；==
 
-​	webjars：以jar包的方式引入静态资源；
+​	webjars：以jar包的方式引入静态资源；可以以依赖的方式引入
 
 http://www.webjars.org/
 
@@ -1517,7 +1517,7 @@ localhost:8080/webjars/jquery/3.3.1/jquery.js
 
 
 
-==2）、"/**" 访问当前项目的任何资源，都去（静态资源的文件夹）找映射==
+==2）、"/**" 访问当前项目的任何资源，如果没有映射其他处理，会去（静态资源的文件夹）找映射==
 
 ```
 "classpath:/META-INF/resources/", 
@@ -1533,7 +1533,7 @@ localhost:8080/abc ===  去静态资源文件夹里面找abc
 
 ​	localhost:8080/   找index页面
 
-==4）、所有的 **/favicon.ico  都是在静态资源文件下找；==
+==4）、所有的 **/favicon.ico  都是在静态资源文件下找；==可以放在任何静态资源文件下修改图标
 
 
 
@@ -1543,7 +1543,7 @@ JSP、Velocity、Freemarker、Thymeleaf
 
 ![](images/template-engine.png)
 
-
+整合模板和数据，渲染生成页面
 
 SpringBoot推荐的Thymeleaf；
 
@@ -1617,11 +1617,11 @@ public class ThymeleafProperties {
 
 1）、th:text；改变当前元素里面的文本内容；
 
-​	th：任意html属性；来替换原生属性的值
+​	th：任意html属性，比如id，class；来替换原生属性的值
 
 ![](images/2018-02-04_123955.png)
 
-
+th:each 写在哪个标签中，哪个标签就会重复生成
 
 2）、表达式？
 
@@ -1709,7 +1709,7 @@ Spring Boot 自动配置好了SpringMVC
 
 - Inclusion of `ContentNegotiatingViewResolver` and `BeanNameViewResolver` beans.
   - 自动配置了ViewResolver（视图解析器：根据方法的返回值得到视图对象（View），视图对象决定如何渲染（转发？重定向？））
-  - ContentNegotiatingViewResolver：组合所有的视图解析器的；
+  - ContentNegotiatingViewResolver：组合所有的视图解析器的；所有在容器中的视图解析器都会被组合起来，然后遍历查找最佳视图解析器并返回视图
   - ==如何定制：我们可以自己给容器中添加一个视图解析器；自动的将其组合进来；==
 
 - Support for serving static resources, including support for WebJars (see below).静态资源文件夹路径,webjars
@@ -1718,12 +1718,12 @@ Spring Boot 自动配置好了SpringMVC
 
 - Custom `Favicon` support (see below).  favicon.ico
 
-  ​
+  
 
-- 自动注册了 of `Converter`, `GenericConverter`, `Formatter` beans.
+- 自动注册了 `Converter`, `GenericConverter`, `Formatter` beans.
 
   - Converter：转换器；  public String hello(User user)：类型转换使用Converter
-  - `Formatter`  格式化器；  2017.12.17===Date；
+  - Formatter： 格式化器；  2017.12.17===Date；
 
 ```java
 		@Bean
@@ -1743,7 +1743,7 @@ Spring Boot 自动配置好了SpringMVC
 
     ==自己给容器中添加HttpMessageConverter，只需要将自己的组件注册容器中（@Bean,@Component）==
 
-    ​
+    
 
 - Automatic registration of `MessageCodesResolver` (see below).定义错误代码生成规则
 
@@ -1792,6 +1792,32 @@ public class MyMvcConfig extends WebMvcConfigurerAdapter {
 }
 ```
 
+以下WebMvcConfigurerAdapter 比较常用的重写接口
+
+```java
+/** 解决跨域问题 **/
+public void addCorsMappings(CorsRegistry registry) ;
+/** 添加拦截器 **/
+void addInterceptors(InterceptorRegistry registry);
+/** 这里配置视图解析器 **/
+void configureViewResolvers(ViewResolverRegistry registry);
+/** 配置内容裁决的一些选项 **/
+void configureContentNegotiation(ContentNegotiationConfigurer configurer);
+/** 视图跳转控制器 **/
+void addViewControllers(ViewControllerRegistry registry);
+/** 静态资源处理 **/
+void addResourceHandlers(ResourceHandlerRegistry registry);
+/** 默认静态资源处理器 **/
+void configureDefaultServletHandling(DefaultServletHandlerConfigurer configurer);
+```
+
+在新版本里面WebMvcConfigurerAdapter已经不被推荐，因此，需要用实现==WebMvcConfigurer==接口，接口定义里面都是默认空方法，因此不需要全部实现也可以
+
+```java
+default void addViewControllers(ViewControllerRegistry registry) {
+}
+```
+
 原理：
 
 ​	1）、WebMvcAutoConfiguration是SpringMVC的自动配置类
@@ -1829,6 +1855,8 @@ public class MyMvcConfig extends WebMvcConfigurerAdapter {
 
 SpringBoot对SpringMVC的自动配置不需要了，所有都是我们自己配置；所有的SpringMVC的自动配置都失效了
 
+如静态资源映射，filter映射等等。
+
 **我们需要在配置类中添加@EnableWebMvc即可；**
 
 ```java
@@ -1857,14 +1885,14 @@ public class MyMvcConfig extends WebMvcConfigurerAdapter {
 public @interface EnableWebMvc {
 ```
 
-2）、
+2）、导入了WebMvcConfigurationSupport组件
 
 ```java
 @Configuration
 public class DelegatingWebMvcConfiguration extends WebMvcConfigurationSupport {
 ```
 
-3）、
+3）、条件注解不再满足，所以自动配置失效
 
 ```java
 @Configuration
@@ -1943,6 +1971,10 @@ public class MyMvcConfig extends WebMvcConfigurerAdapter {
 
 1）、编写国际化配置文件，抽取页面需要显示的国际化消息
 
+用resourceboundle视图来编辑比较方便
+
+文件的结构要保持一致
+
 ![](images/搜狗截图20180211130721.png)
 
 
@@ -2020,6 +2052,8 @@ public class MessageSourceAutoConfiguration {
 			<p class="mt-5 mb-3 text-muted">© 2017-2018</p>
 			<a class="btn btn-sm">中文</a>
 			<a class="btn btn-sm">English</a>
+           <!-- <a class="btn btn-sm" th:href="@{/index.html(l='zh_CN')}">中文</a>
+		    <a class="btn btn-sm" th:href="@{/index.html(l='en_US')}">English</a>-->
 		</form>
 
 	</body>
@@ -2049,6 +2083,7 @@ public class MessageSourceAutoConfiguration {
 			return localeResolver;
 		}
 默认的就是根据请求头带来的区域信息获取Locale进行国际化
+请求头中的acceptLanguage中带有的语言信息，排在前面的表示区域语言
 ```
 
 4）、点击链接切换国际化
@@ -2076,7 +2111,7 @@ public class MyLocaleResolver implements LocaleResolver {
     }
 }
 
-
+//注意这个方法的名字是添加组件的名字
  @Bean
     public LocaleResolver localeResolver(){
         return new MyLocaleResolver();
@@ -2097,7 +2132,7 @@ public class MyLocaleResolver implements LocaleResolver {
 spring.thymeleaf.cache=false 
 ```
 
-2）、页面修改完成以后ctrl+f9：重新编译；
+2）、页面修改完成以后ctrl+f9：重新编译；如果不重新编译，浏览器那里还是不会改变
 
 
 
@@ -2107,7 +2142,27 @@ spring.thymeleaf.cache=false
 <p style="color: red" th:text="${msg}" th:if="${not #strings.isEmpty(msg)}"></p>
 ```
 
+为了重复提交表单，设置重定向到目标页面
 
+```java
+@PostMapping("/user/login")
+public String login(@RequestParam("username") String username,
+                    @RequestParam("password") String password,
+                    Map<String,Object>map){
+    if(!StringUtils.isEmpty(username)&&"12345".equals(password)){
+        return "redirect:/main.html";       
+    }else{
+        map.put("msg","登录信息错误");
+        return "index";
+    }
+}
+@Override
+    public void addViewControllers(ViewControllerRegistry registry) {
+        registry.addViewController("/").setViewName("index.html");
+        registry.addViewController("/index.html").setViewName("index.html");
+        registry.addViewController("/main.html").setViewName("dashboard");
+    }
+```
 
 ### 4）、拦截器进行登陆检查
 
@@ -2236,8 +2291,6 @@ insert的公共片段在div标签中
 
 **th:include**：将被引入的片段的内容包含进这个标签中
 
-
-
 ```html
 <footer th:fragment="copy">
 &copy; 2011 The Good Thymes Virtual Grocery
@@ -2285,7 +2338,7 @@ insert的公共片段在div标签中
                 </a>
             </li>
 
-<!--引入侧边栏;传入参数-->
+<!--引入侧边栏;传入参数,可以根据参数做一些判断和操作-->
 <div th:replace="commons/bar::#sidebar(activeUri='emps')"></div>
 ```
 
@@ -2294,42 +2347,48 @@ insert的公共片段在div标签中
 添加页面
 
 ```html
-<form>
-    <div class="form-group">
-        <label>LastName</label>
-        <input type="text" class="form-control" placeholder="zhangsan">
-    </div>
-    <div class="form-group">
-        <label>Email</label>
-        <input type="email" class="form-control" placeholder="zhangsan@atguigu.com">
-    </div>
-    <div class="form-group">
-        <label>Gender</label><br/>
-        <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="gender"  value="1">
-            <label class="form-check-label">男</label>
-        </div>
-        <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="gender"  value="0">
-            <label class="form-check-label">女</label>
-        </div>
-    </div>
-    <div class="form-group">
-        <label>department</label>
-        <select class="form-control">
-            <option>1</option>
-            <option>2</option>
-            <option>3</option>
-            <option>4</option>
-            <option>5</option>
-        </select>
-    </div>
-    <div class="form-group">
-        <label>Birth</label>
-        <input type="text" class="form-control" placeholder="zhangsan">
-    </div>
-    <button type="submit" class="btn btn-primary">添加</button>
+<form action="/emp" method="post">
+   <div class="form-group">
+      <label>LastName</label>
+      <input name="lastName" type="text" class="form-control" placeholder="zhangsan">
+   </div>
+   <div class="form-group">
+      <label>Email</label>
+      <input name="email" type="email" class="form-control" placeholder="zhangsan@atguigu.com">
+   </div>
+   <div class="form-group">
+      <label>Gender</label><br/>
+      <div class="form-check form-check-inline">
+         <input class="form-check-input" type="radio" name="gender"  value="1">
+         <label class="form-check-label">男</label>
+      </div>
+      <div class="form-check form-check-inline">
+         <input class="form-check-input" type="radio" name="gender"  value="0">
+         <label class="form-check-label">女</label>
+      </div>
+   </div>
+   <div class="form-group">
+      <label>department</label>
+      <select class="form-control" name="department.id">
+         <option th:value="${dep.id}" th:each="dep:${deps}" th:text="${dep.departmentName}"></option>
+      </select>
+   </div>
+   <div class="form-group">
+      <label>Birth</label>
+      <input name="birth" type="text" class="form-control" placeholder="zhangsan">
+   </div>
+   <button type="submit" class="btn btn-primary" >添加</button>
 </form>
+```
+
+```java
+@PostMapping("/emp")
+public String addEmp(Employee employee){
+    System.out.println(employee);
+    employeeDao.save(employee);
+    System.out.println("save done");
+    return "redirect:/emps";  //中间不要留空格
+}
 ```
 
 提交的数据格式不对：生日：日期；
@@ -2342,9 +2401,29 @@ insert的公共片段在div标签中
 
 默认日期是按照/的方式；
 
+日期显示的格式化如下
+
+```html
+<input th:value="${#dates.format(editEmp.birth,'yyyy/mm/dd hh:mm:ss')}" name="birth" type="text" class="form-control">
+```
+
+可以在配置文件中自定义事件格式
+
+```xml
+spring.mvc.date-format=yyyy/mm/dd hh:mm:ss
+```
+
 ### 7）、CRUD-员工修改
 
 修改添加二合一表单
+
+判断是添加还是修改页面，当修改页面时，加载时会给页面传入一个emp对象，所以判断emp是否为空即可
+
+```html
+th:value="${editEmp!=null}?${#dates.format(editEmp.birth,'yyyy/mm/dd hh:mm:ss')}"
+```
+
+前面添加的```${editEmp!=null}?```表示一个三元判断语句，当前面成立时后面的才执行，两个并列写表示“与”的关系
 
 ```html
 <!--需要区分是员工修改还是添加；-->
@@ -2391,6 +2470,34 @@ insert的公共片段在div标签中
 </form>
 ```
 
+```java
+//添加
+@PostMapping("/emp")
+    public String addEmp(Employee employee){
+        System.out.println(employee);
+        employeeDao.save(employee);
+        System.out.println("save done");
+        return "redirect:/emps";
+    }
+//查询要修改的
+@GetMapping("/emp/{id}")
+public String toEdit(@PathVariable("id") Integer id,Model model){
+    System.out.println(id);
+    Employee employee=employeeDao.get(id);
+    model.addAttribute("editEmp",employee);
+    Collection<Department>list=departmentDao.getDepartments();
+    model.addAttribute("deps",list);
+    return "emp/add";
+}
+//提交要修改的
+@PutMapping("/emp")
+public String editEmp(Employee employee){
+    System.out.println(employee);
+    employeeDao.save(employee);
+    return "redirect:/emps";
+}
+```
+
 ### 8）、CRUD-员工删除
 
 ```html
@@ -2406,8 +2513,12 @@ insert的公共片段在div标签中
         <button th:attr="del_uri=@{/emp/}+${emp.id}" class="btn btn-sm btn-danger deleteBtn">删除</button>
     </td>
 </tr>
+<!--隐藏域，设置方法类型-->
+<form id="deleteEmp" method="post">
+     <input type="hidden" name="_method" value="delete">
+</form>
 
-
+<!-- 用了js的方法来设置点击函数，这里为了删除特定的元素，action的地址要写在button属性中，然后在js中取出来，设置表单的action属性-->
 <script>
     $(".deleteBtn").click(function(){
         //删除当前员工的
@@ -2417,7 +2528,13 @@ insert的公共片段在div标签中
 </script>
 ```
 
-
+```java
+@DeleteMapping("/emp/{id}")
+public String deleteEmp(@PathVariable("id") Integer id){
+    employeeDao.delete(id);
+    return "redirect:/emps";
+}
+```
 
 ## 7、错误处理机制
 
@@ -2585,7 +2702,7 @@ protected ModelAndView resolveErrorView(HttpServletRequest request,
 
 #### 	2）、如何定制错误的json数据；
 
-​		1）、自定义异常处理&返回定制json数据；
+​		1）、自定义异常处理&返回定制json数据；定义一个ExceptionHandler处理异常，浏览器客户端返回的相同
 
 ```java
 @ControllerAdvice
@@ -2628,7 +2745,7 @@ public class MyExceptionHandler {
 
 出现错误以后，会来到/error请求，会被BasicErrorController处理，响应出去可以获取的数据是由getErrorAttributes得到的（是AbstractErrorController（ErrorController）规定的方法）；
 
-​	1、完全来编写一个ErrorController的实现类【或者是编写AbstractErrorController的子类】，放在容器中；
+​	1、编写一个ErrorController的实现类【或者是编写AbstractErrorController的子类】，放在容器中；自定义的存在时就不会执行默认的，而是执行自定义的；==conditiononmissingbean();==
 
 ​	2、页面上能用的数据，或者是json返回能用的数据都是通过errorAttributes.getErrorAttributes得到；
 
@@ -2645,6 +2762,8 @@ public class MyErrorAttributes extends DefaultErrorAttributes {
     public Map<String, Object> getErrorAttributes(RequestAttributes requestAttributes, boolean includeStackTrace) {
         Map<String, Object> map = super.getErrorAttributes(requestAttributes, includeStackTrace);
         map.put("company","atguigu");
+        Map<String,Object> ext=requestAttributes.getArrtribute("ext",0);//从异常处理器获得的一些自定义信息，添加到map中
+        map.put("ext",ext);
         return map;
     }
 }
@@ -2707,6 +2826,19 @@ public EmbeddedServletContainerCustomizer embeddedServletContainerCustomizer(){
 ServletRegistrationBean
 
 ```java
+public class MyServlet extends HttpServlet {
+    //处理get请求
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        doPost(req,resp);
+    }
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        resp.getWriter().write("Hello MyServlet");
+    }
+}
+```
+```java
 //注册三大组件
 @Bean
 public ServletRegistrationBean myServlet(){
@@ -2718,6 +2850,23 @@ public ServletRegistrationBean myServlet(){
 
 FilterRegistrationBean
 
+```java
+public class MyFilter implements Filter {
+@Override
+public void init(FilterConfig filterConfig) throws ServletException {
+
+}
+@Override
+public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
+    System.out.println("MyFilter process...");
+    chain.doFilter(request,response);
+
+}
+@Override
+public void destroy() {
+}
+}
+```
 ```java
 @Bean
 public FilterRegistrationBean myFilter(){
@@ -2731,6 +2880,20 @@ public FilterRegistrationBean myFilter(){
 ServletListenerRegistrationBean
 
 ```java
+public class MyListener implements ServletContextListener {
+    @Override
+    public void contextInitialized(ServletContextEvent sce) {
+        System.out.println("contextInitialized...web应用启动");
+    }
+
+    @Override
+    public void contextDestroyed(ServletContextEvent sce) {
+        System.out.println("contextDestroyed...当前web项目销毁");
+    }
+}
+```
+
+```java
 @Bean
 public ServletListenerRegistrationBean myListener(){
     ServletListenerRegistrationBean<MyListener> registrationBean = new ServletListenerRegistrationBean<>(new MyListener());
@@ -2738,9 +2901,7 @@ public ServletListenerRegistrationBean myListener(){
 }
 ```
 
-
-
-SpringBoot帮我们自动SpringMVC的时候，自动的注册SpringMVC的前端控制器；DIspatcherServlet；
+SpringBoot自动配置SpringMVC的时候，自动的注册SpringMVC的前端控制器；DIspatcherServlet；
 
 DispatcherServletAutoConfiguration中：
 
@@ -2783,7 +2944,7 @@ Tomcat（默认使用）
 </dependency>
 ```
 
-Jetty
+Jetty(长连接)
 
 ```xml
 <!-- 引入web模块 -->
@@ -2805,7 +2966,7 @@ Jetty
 </dependency>
 ```
 
-Undertow
+Undertow（高并发，不支持jsp）
 
 ```xml
 <!-- 引入web模块 -->
@@ -2829,7 +2990,7 @@ Undertow
 
 ### 4）、嵌入式Servlet容器自动配置原理；
 
-
+都是在自动配置包里面查找相应的自动配置类，里面有配置过程
 
 EmbeddedServletContainerAutoConfiguration：嵌入式的Servlet容器自动配置？
 
@@ -3002,7 +3163,7 @@ ServerProperties也是定制器
 
 
 
-###5）、嵌入式Servlet容器启动原理；
+### 5）、嵌入式Servlet容器启动原理；
 
 什么时候创建嵌入式的Servlet容器工厂？什么时候获取嵌入式的Servlet容器并启动Tomcat；
 
@@ -3094,7 +3255,7 @@ EmbeddedServletContainerFactory containerFactory = getEmbeddedServletContainerFa
 
 8）、嵌入式的Servlet容器创建对象并启动Servlet容器；
 
-**先启动嵌入式的Servlet容器，再将ioc容器中剩下没有创建出的对象获取出来；**
+**先启动嵌入式的Servlet容器，再将ioc容器中剩下没有创建出的对象获取出来；**如controller，service等
 
 **==IOC容器启动创建嵌入式的Servlet容器==**
 
@@ -3114,7 +3275,7 @@ EmbeddedServletContainerFactory containerFactory = getEmbeddedServletContainerFa
 
 ### 步骤
 
-1）、必须创建一个war项目；（利用idea创建好目录结构）
+1）、必须创建一个war项目；（利用idea创建好目录结构，web.xml,以及Tomcat的配置）
 
 2）、将嵌入式的Tomcat指定为provided；
 
@@ -3172,13 +3333,13 @@ servlet3.0（Spring注解版）：
 
 Spring的web模块里面有这个文件：**org.springframework.web.SpringServletContainerInitializer**
 
-3）、SpringServletContainerInitializer将@HandlesTypes(WebApplicationInitializer.class)标注的所有这个类型的类都传入到onStartup方法的Set<Class<?>>；为这些WebApplicationInitializer类型的类创建实例；
+3）、SpringServletContainerInitializer将@HandlesTypes(WebApplicationInitializer.class)标注的所有这个类型的类都传入到onStartup方法的Set<Class<?>>；判断是否为接口，不是则为这些WebApplicationInitializer类型的类创建实例；
 
 4）、每一个WebApplicationInitializer都调用自己的onStartup；
 
 ![](images/搜狗截图20180302221835.png)
 
-5）、相当于我们的SpringBootServletInitializer的类会被创建对象，并执行onStartup方法
+5）、相当于项目生成时自动生成的SpringBootServletInitializer的类会被创建对象，并执行onStartup方法
 
 6）、SpringBootServletInitializer实例执行onStartup的时候会createRootApplicationContext；创建容器
 
@@ -3407,7 +3568,8 @@ docker logs container-name/container-id
 
 更多命令参看
 https://docs.docker.com/engine/reference/commandline/docker/
-可以参考每一个镜像的文档
+可以参考每一个镜像的文docker hub
+一个镜像可以多次启动生成多个容器，每个容器相互隔离
 
 ````
 
